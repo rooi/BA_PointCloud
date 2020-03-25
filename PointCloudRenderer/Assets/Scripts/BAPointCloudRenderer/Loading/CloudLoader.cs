@@ -1,6 +1,7 @@
 ﻿using BAPointCloudRenderer.CloudData;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Text;
 using UnityEngine;
 
@@ -18,13 +19,30 @@ namespace BAPointCloudRenderer.Loading {
          /// <param name="moveToOrigin">True, if the center of the cloud should be moved to the origin</param>
         public static PointCloudMetaData LoadMetaData(string cloudPath, bool moveToOrigin = false) {
             string jsonfile;
-            using (StreamReader reader = new StreamReader(cloudPath + "cloud.js", Encoding.Default)) {
-                jsonfile = reader.ReadToEnd();
-                reader.Close();
+            if (cloudPath.Contains("http"))
+            {
+                using (var webClient = new System.Net.WebClient())
+                {
+                    jsonfile = webClient.DownloadString(cloudPath);
+                }
             }
+            else
+            {
+                using (StreamReader reader = new StreamReader(cloudPath + "cloud.js", Encoding.Default))
+                {
+                    jsonfile = reader.ReadToEnd();
+                    reader.Close();
+                }
+            }
+            string cleanCloudPath = cloudPath;
+            if (cleanCloudPath.Contains("cloud.js"))
+            {
+                cleanCloudPath = cleanCloudPath.Replace("cloud.js", "");
+            }
+
             PointCloudMetaData metaData = PointCloudMetaData.ReadFromJson(jsonfile, moveToOrigin);
-            metaData.cloudPath = cloudPath;
-            metaData.cloudName =  cloudPath.Substring(0, cloudPath.Length-1).Substring(cloudPath.Substring(0, cloudPath.Length - 1).LastIndexOf("/") + 1);
+            metaData.cloudPath = cleanCloudPath;
+            metaData.cloudName = cleanCloudPath.Substring(0, cleanCloudPath.Length-1).Substring(cleanCloudPath.Substring(0, cleanCloudPath.Length - 1).LastIndexOf("/") + 1);
             return metaData;
         }
         
@@ -165,13 +183,24 @@ namespace BAPointCloudRenderer.Loading {
          * 012/345/676/r012345676.bin
          */
         private static byte[] FindAndLoadFile(string dataRPath, PointCloudMetaData metaData, string id, string fileending) {
+            
             int levels = id.Length / metaData.hierarchyStepSize;
             string path = "";
-            for (int i = 0; i < levels; i++) {
+            for (int i = 0; i < levels; i++)
+            {
                 path += id.Substring(i * metaData.hierarchyStepSize, metaData.hierarchyStepSize) + "/";
             }
             path += "r" + id + fileending;
-            return File.ReadAllBytes(dataRPath + path);
+
+            if (dataRPath.Contains("http"))
+            {
+                WebClient client = new WebClient();
+                return client.DownloadData(dataRPath + path);
+            }
+            else
+            {
+                return File.ReadAllBytes(dataRPath + path);
+            }
         }
 
         /* Loads the points for that node and all its children

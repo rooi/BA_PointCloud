@@ -36,7 +36,7 @@ namespace BAPointCloudRenderer.CloudController {
 
         private void LoadHierarchy() {
             try {
-                if (!cloudPath.EndsWith("/")) {
+                if (!cloudPath.Contains("http") && !cloudPath.EndsWith("/")) {
                     cloudPath = cloudPath + "/";
                 }
 
