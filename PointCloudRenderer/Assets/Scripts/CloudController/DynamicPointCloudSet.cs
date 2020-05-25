@@ -2,7 +2,6 @@
 using BAPointCloudRenderer.ObjectCreation;
 using UnityEngine;
 using UnityEditor;
-using System;
 
 namespace BAPointCloudRenderer.CloudController {
 
@@ -35,22 +34,14 @@ namespace BAPointCloudRenderer.CloudController {
         /// </summary>
         public Camera userCamera;
 
-        private Vector3 oldCenter;
-        private Vector3 oldSize;
-
-        public Action<Vector3, Vector3> OnBoundingBoxUpdated;
-
         // Use this for initialization
         protected override void Initialize() {
             if (userCamera == null) {
                 userCamera = Camera.main;
             }
-
             PointRenderer = new V2Renderer(this, minNodeSize, pointBudget, nodesLoadedPerFrame, nodesGOsPerFrame, userCamera, meshConfiguration, cacheSizeInPoints);
-
-            oldCenter = overallBoundingBox.Center().ToFloatVector();
-            oldSize = overallBoundingBox.Size().ToFloatVector();
         }
+
 
         // Update is called once per frame
         void Update()
@@ -60,22 +51,7 @@ namespace BAPointCloudRenderer.CloudController {
                 return;
             }
             PointRenderer.Update();
-
-            UpdateBoxCollider();
-
             DrawDebugInfo();
-        }
-
-        private void UpdateBoxCollider()
-        {
-            var newCenter = overallBoundingBox.Center().ToFloatVector();
-            var newSize = overallBoundingBox.Size().ToFloatVector();
-            if (oldCenter != newCenter || oldSize != newSize)
-            {
-                oldCenter = newCenter;
-                oldSize = newSize;
-                OnBoundingBoxUpdated?.Invoke(oldCenter, oldSize);
-            }
         }
     }
 }

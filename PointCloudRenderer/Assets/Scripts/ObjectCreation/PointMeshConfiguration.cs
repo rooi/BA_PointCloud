@@ -9,13 +9,6 @@ namespace BAPointCloudRenderer.ObjectCreation
     /// </summary>
     class PointMeshConfiguration : MeshConfiguration
     {
-		/// If changing the parameters should be possible during execution, this variable has to be set to true in the beginning! Later changes to this variable will not change anything
-        /// </summary>
-        public const bool reloadingPossible = true;
-        /// <summary>
-        /// Set this to true to reload the shaders according to the changed parameters. After applying the changes, the variable will set itself back to false.
-        /// </summary>
-        public bool reload = false;
         /// <summary>
         /// If set to true, the Bounding Boxes of the individual octree nodes will be displayed.
         /// </summary>
@@ -24,30 +17,14 @@ namespace BAPointCloudRenderer.ObjectCreation
         private Material material;
         private HashSet<GameObject> gameObjectCollection = null;
 
-		private void LoadShaders() {
-			material = (Material)Resources.Load("Materials/PointMaterial", typeof(Material));
-            if(!material) material = new Material(Shader.Find("Custom/PointShader"));
-            gameObjectCollection = new HashSet<GameObject>();
-			material.enableInstancing = true;
-		}
-		
         public void Start()
         {
-			if (reloadingPossible) {
-                gameObjectCollection = new HashSet<GameObject>();
-            }
-            LoadShaders();
+            material = new Material(Shader.Find("Custom/PointShader"));
+            gameObjectCollection = new HashSet<GameObject>();
         }
 
         public void Update()
         {
-			if (reload && gameObjectCollection != null) {
-                LoadShaders();
-                foreach (GameObject go in gameObjectCollection) {
-                    go.GetComponent<MeshRenderer>().material = material;
-                }
-                reload = false;
-            }
             if (displayLOD)
             {
                 foreach (GameObject go in gameObjectCollection)

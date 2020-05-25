@@ -34,7 +34,7 @@ namespace BAPointCloudRenderer.CloudController {
         //For origin-moving:
         private bool hasMoved = false;
         private Vector3d moving = new Vector3d(0,0,0);
-        protected BoundingBox overallBoundingBox = new BoundingBox(double.PositiveInfinity, double.PositiveInfinity, double.PositiveInfinity,
+        private BoundingBox overallBoundingBox = new BoundingBox(double.PositiveInfinity, double.PositiveInfinity, double.PositiveInfinity,
                                                                     double.NegativeInfinity, double.NegativeInfinity, double.NegativeInfinity);
         private BoundingBox overallTightBoundingBox = new BoundingBox(double.PositiveInfinity, double.PositiveInfinity, double.PositiveInfinity,
                                                                     double.NegativeInfinity, double.NegativeInfinity, double.NegativeInfinity);

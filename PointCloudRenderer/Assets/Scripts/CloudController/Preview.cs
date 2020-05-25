@@ -110,7 +110,7 @@ namespace BAPointCloudRenderer.CloudController
             foreach (PointCloudLoader loader in _loaders)
             {
                 string path = loader.cloudPath;
-                if (!path.EndsWith("/"))
+                if (!path.Contains("http") && !path.EndsWith("/"))
                 {
                     path += "/";
                 }
