@@ -23,17 +23,22 @@ Shader "Custom/ParaboloidGeoScreenSizeShader"
 			#pragma vertex vert
 			#pragma geometry geom
 			#pragma fragment frag
+			#pragma multi_compile_instancing
+			#include "UnityCG.cginc"
 
 			struct VertexInput
 			{
 				float4 position : POSITION;
 				float4 color : COLOR;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
 			struct VertexMiddle {
 				float4 position : SV_POSITION;
 				float4 color : COLOR;
 				float size : POINTSIZE;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+					UNITY_VERTEX_OUTPUT_STEREO
 			};
 
 			struct VertexOutput
@@ -41,33 +46,44 @@ Shader "Custom/ParaboloidGeoScreenSizeShader"
 				float4 position : SV_POSITION;
 				float4 color : COLOR;
 				float2 uv : TEXCOORD0;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+				UNITY_VERTEX_OUTPUT_STEREO
 			};
 
-			float _PointSize;
-			int _ScreenWidth;
-			int _ScreenHeight;
-			float _FOV;
-			int _Circles;
-			int _Details;
-			float4x4 _InverseProjMatrix;
+			UNITY_INSTANCING_BUFFER_START(Props)
+				UNITY_DEFINE_INSTANCED_PROP(float, _PointSize)
+				UNITY_DEFINE_INSTANCED_PROP(int, _ScreenWidth)
+				UNITY_DEFINE_INSTANCED_PROP(int, _ScreenHeight)
+				UNITY_DEFINE_INSTANCED_PROP(int, _Circles)
+				UNITY_DEFINE_INSTANCED_PROP(int, _Details)
+				UNITY_DEFINE_INSTANCED_PROP(float, _FOV)
+				UNITY_DEFINE_INSTANCED_PROP(float4x4, _InverseProjMatrix)
+			UNITY_INSTANCING_BUFFER_END(Props)
 
 			VertexMiddle vert(VertexInput v) {
 				VertexMiddle o;
+				UNITY_SETUP_INSTANCE_ID(v);
+				UNITY_INITIALIZE_OUTPUT(VertexMiddle, o)
+				UNITY_TRANSFER_INSTANCE_ID(v, o);
+				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+					
 				o.color = v.color;
 				float4 viewpos = mul(UNITY_MATRIX_MV, v.position);
 				o.position = mul(UNITY_MATRIX_P, viewpos);
-				float slope = tan(_FOV / 2);
-				o.size = _PointSize * slope * viewpos.z * 2 / _ScreenHeight;
+				float slope = tan(UNITY_ACCESS_INSTANCED_PROP(Props, _FOV) / 2);
+				o.size = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) * slope * viewpos.z * 2 / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight);
 				return o;
 			}
 
 			VertexOutput createParaboloidPoint(VertexMiddle input, float xsize, float ysize, float zsize, float u, float v) {
 				VertexOutput nPoint;
+				UNITY_INITIALIZE_OUTPUT(VertexOutput, nPoint)
+				
 				nPoint.position = input.position;
 				nPoint.position.x += u*xsize*input.position.w;
 				nPoint.position.y += v*ysize*input.position.w;
 				nPoint.position /= nPoint.position.w;
-				float4 viewposition = mul(_InverseProjMatrix, nPoint.position);
+				float4 viewposition = mul(UNITY_ACCESS_INSTANCED_PROP(Props, _InverseProjMatrix), nPoint.position);
 				viewposition /= viewposition.w;
 				//viewposition givesalso the direction in which the object can be moved torwards the camera
 				float4 vpn = float4(normalize(float3(viewposition.x, viewposition.y, viewposition.z)),0);
@@ -77,13 +93,16 @@ Shader "Custom/ParaboloidGeoScreenSizeShader"
 				nPoint.position = viewposition;
 				nPoint.color = input.color;
 				nPoint.uv = float2(u, v);
+				
+				UNITY_TRANSFER_VERTEX_OUTPUT_STEREO(input, nPoint);
 				return nPoint;
 			}
 
 			[maxvertexcount(68)]
 			void geom(point VertexMiddle input[1], inout TriangleStream<VertexOutput> outputStream) {
-				float xsize = _PointSize / _ScreenWidth;
-				float ysize = _PointSize / _ScreenHeight;
+				float xsize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenWidth);
+				float ysize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight);
+				UNITY_SETUP_INSTANCE_ID(input[0]);
 
 				float sqr = sqrt(2) / 2;
 				float ringpositions[3] = { 0.25, 0.5, 1 };
@@ -96,8 +115,8 @@ Shader "Custom/ParaboloidGeoScreenSizeShader"
 				VertexOutput em1m1 = createParaboloidPoint(input[0], xsize, ysize, input[0].size, -1, -1);
 				VertexOutput e1m1 = createParaboloidPoint(input[0], xsize, ysize, input[0].size, 1, -1);
 
-				if (_Details > 0) {
-					float ringval = ringpositions[3 - _Details];
+				if (UNITY_ACCESS_INSTANCED_PROP(Props, _Details) > 0) {
+					float ringval = ringpositions[3 - UNITY_ACCESS_INSTANCED_PROP(Props, _Details)];
 					VertexOutput ir1 = createParaboloidPoint(input[0], xsize, ysize, input[0].size, ringval, 0);
 					VertexOutput ir2 = createParaboloidPoint(input[0], xsize, ysize, input[0].size, sqr*ringval, sqr*ringval);
 					VertexOutput ir3 = createParaboloidPoint(input[0], xsize, ysize, input[0].size, 0, ringval);
@@ -128,7 +147,7 @@ Shader "Custom/ParaboloidGeoScreenSizeShader"
 					outputStream.Append(ir1);
 					outputStream.RestartStrip();
 
-					for (int i = 4 - _Details; i < 3; i++) {
+					for (int i = 4 - UNITY_ACCESS_INSTANCED_PROP(Props, _Details); i < 3; i++) {
 						float ringval = ringpositions[i];
 						VertexOutput mr1 = createParaboloidPoint(input[0], xsize, ysize, input[0].size, ringval, 0);
 						VertexOutput mr2 = createParaboloidPoint(input[0], xsize, ysize, input[0].size, sqr*ringval, sqr*ringval);
@@ -213,7 +232,8 @@ Shader "Custom/ParaboloidGeoScreenSizeShader"
 			}
 
 			float4 frag(VertexOutput o) : COLOR{
-				if (_Circles >= 0.5 && o.uv.x*o.uv.x + o.uv.y*o.uv.y > 1) {
+				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(o);
+				if (UNITY_ACCESS_INSTANCED_PROP(Props, _Circles) >= 0.5 && o.uv.x*o.uv.x + o.uv.y*o.uv.y > 1) {
 					discard;
 				}
 				return o.color;

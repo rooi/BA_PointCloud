@@ -27,11 +27,14 @@ Shader "Custom/ParaboloidGeoWorldSizeShader"
 			#pragma vertex vert
 			#pragma geometry geom
 			#pragma fragment frag
+			#pragma multi_compile_instancing
+			#include "UnityCG.cginc"
 
 			struct VertexInput
 			{
 				float4 position : POSITION;
 				float4 color : COLOR;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
 			struct VertexMiddle {
@@ -40,6 +43,8 @@ Shader "Custom/ParaboloidGeoWorldSizeShader"
 				float4 R : NORMAL0;
 				float4 U : NORMAL1;
 				float4 N : NORMAL2;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+				UNITY_VERTEX_OUTPUT_STEREO
 			};
 
 			struct VertexOutput
@@ -47,14 +52,24 @@ Shader "Custom/ParaboloidGeoWorldSizeShader"
 				float4 position : SV_POSITION;
 				float4 color : COLOR;
 				float2 uv : TEXCOORD0;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+				UNITY_VERTEX_OUTPUT_STEREO
 			};
 
-			float _PointSize;
-			int _Circles;
-			int _Details; //1, 2 or 3
+			UNITY_INSTANCING_BUFFER_START(Props)
+				UNITY_DEFINE_INSTANCED_PROP(float, _PointSize)
+				UNITY_DEFINE_INSTANCED_PROP(int, _Circles)
+				UNITY_DEFINE_INSTANCED_PROP(int, _Details) //1, 2 or 3
+			UNITY_INSTANCING_BUFFER_END(Props)
+			
 
 			VertexMiddle vert(VertexInput v) {
 				VertexMiddle o;
+				UNITY_SETUP_INSTANCE_ID(v);
+				UNITY_INITIALIZE_OUTPUT(VertexMiddle, o)
+				UNITY_TRANSFER_INSTANCE_ID(v, o);
+				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+					
 				o.position = mul(unity_ObjectToWorld, v.position);
 				o.color = v.color;
 
@@ -63,26 +78,31 @@ Shader "Custom/ParaboloidGeoWorldSizeShader"
 				float3 R = normalize(cross(view, upvec));
 
 
-				o.U = float4(upvec * _PointSize, 0);
-				o.R = -float4(R * _PointSize, 0);
+				o.U = float4(upvec * UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize), 0);
+				o.R = -float4(R * UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize), 0);
 				return o;
 			}
 
 			VertexOutput createParaboloidPoint(VertexMiddle input, float u, float v) {
 				VertexOutput nPoint;
+				UNITY_INITIALIZE_OUTPUT(VertexOutput, nPoint)
+				
 				nPoint.position = input.position;
 				nPoint.position += u*input.R;
 				nPoint.position += v*input.U;
-				float4 N = -float4(normalize(float3(nPoint.position - _WorldSpaceCameraPos))*_PointSize, 0);
+				float4 N = -float4(normalize(float3(nPoint.position - _WorldSpaceCameraPos))*UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize), 0);
 				nPoint.position += (1 - (u*u + v*v))*N;
 				nPoint.position = mul(UNITY_MATRIX_VP, nPoint.position);
 				nPoint.color = input.color;
 				nPoint.uv = float2(u, v);
+				
+				UNITY_TRANSFER_VERTEX_OUTPUT_STEREO(input, nPoint);
 				return nPoint;
 			}
 
 			[maxvertexcount(68)]
 			void geom(point VertexMiddle input[1], inout TriangleStream<VertexOutput> outputStream) {
+				UNITY_SETUP_INSTANCE_ID(input[0]);
 				float sqr = sqrt(2) / 2;
 				float ringpositions[3] = { 0.25, 0.5, 1 };
 
@@ -94,8 +114,8 @@ Shader "Custom/ParaboloidGeoWorldSizeShader"
 				VertexOutput em1m1 = createParaboloidPoint(input[0], -1, -1);
 				VertexOutput e1m1 = createParaboloidPoint(input[0], 1, -1);
 
-				if (_Details > 0) {
-					float ringval = ringpositions[3 - _Details];
+				if (UNITY_ACCESS_INSTANCED_PROP(Props, _Details) > 0) {
+					float ringval = ringpositions[3 - UNITY_ACCESS_INSTANCED_PROP(Props, _Details)];
 					VertexOutput ir1 = createParaboloidPoint(input[0], ringval, 0);
 					VertexOutput ir2 = createParaboloidPoint(input[0], sqr*ringval, sqr*ringval);
 					VertexOutput ir3 = createParaboloidPoint(input[0], 0, ringval);
@@ -104,6 +124,7 @@ Shader "Custom/ParaboloidGeoWorldSizeShader"
 					VertexOutput ir6 = createParaboloidPoint(input[0], -sqr*ringval, -sqr*ringval);
 					VertexOutput ir7 = createParaboloidPoint(input[0], 0, -ringval);
 					VertexOutput ir8 = createParaboloidPoint(input[0], sqr*ringval, -sqr*ringval);
+					
 					//Inner Circle
 					outputStream.Append(ir1);
 					outputStream.Append(middle);
@@ -126,7 +147,7 @@ Shader "Custom/ParaboloidGeoWorldSizeShader"
 					outputStream.Append(ir1);
 					outputStream.RestartStrip();
 
-					for (int i = 4 - _Details; i < 3; i++) {
+					for (int i = 4 - UNITY_ACCESS_INSTANCED_PROP(Props, _Details); i < 3; i++) {
 						float ringval = ringpositions[i];
 						VertexOutput mr1 = createParaboloidPoint(input[0], ringval, 0);
 						VertexOutput mr2 = createParaboloidPoint(input[0], sqr*ringval, sqr*ringval);
@@ -212,7 +233,8 @@ Shader "Custom/ParaboloidGeoWorldSizeShader"
 			}
 
 			float4 frag(VertexOutput o) : COLOR{
-				if (_Circles >= 0.5 && o.uv.x*o.uv.x + o.uv.y*o.uv.y > 1) {
+				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(o);
+				if (UNITY_ACCESS_INSTANCED_PROP(Props, _Circles) >= 0.5 && o.uv.x*o.uv.x + o.uv.y*o.uv.y > 1) {
 					discard;
 				}
 				return o.color;

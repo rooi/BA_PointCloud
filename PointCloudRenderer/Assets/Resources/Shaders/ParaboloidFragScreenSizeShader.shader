@@ -25,6 +25,7 @@
 				#pragma vertex vert
 				#pragma geometry geom
 				#pragma fragment frag
+				#pragma multi_compile_instancing
 				#include "UnityCG.cginc"
 
 				struct VertexInput
@@ -77,16 +78,16 @@
 					UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 					float4 viewpos = float4(UnityObjectToViewPos(v.position), 1);
 					o.position = mul(UNITY_MATRIX_P, viewpos);
-					float slope = tan(_FOV / 2);
-					o.size = -_PointSize * slope * viewpos.z * 2 / _ScreenHeight;
+					float slope = tan(UNITY_ACCESS_INSTANCED_PROP(Props, _FOV) / 2);
+					o.size = -UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) * slope * viewpos.z * 2 / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight);
 					o.color = v.color;
 					return o;
 				}
 
 				[maxvertexcount(4)]
 				void geom(point VertexMiddle input[1], inout TriangleStream<VertexOutput> outputStream) {
-					float xsize = _PointSize / _ScreenWidth;
-					float ysize = _PointSize / _ScreenHeight;
+					float xsize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenWidth);
+					float ysize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight);
 					UNITY_SETUP_INSTANCE_ID(input[0]);
 
 					VertexOutput out1;
@@ -105,7 +106,7 @@
 					out1.position.x -= out1.position.w * xsize;
 					out1.position.y += out1.position.w * ysize;
 					out1.position = out1.position / out1.position.w;
-					out1.viewposition = mul(_InverseProjMatrix, out1.position);
+					out1.viewposition = mul(UNITY_ACCESS_INSTANCED_PROP(Props, _InverseProjMatrix), out1.position);
 					out1.viewposition /= out1.viewposition.w;
 					out1.size = input[0].size;
 
@@ -115,7 +116,7 @@
 					out2.position.x += out2.position.w * xsize;
 					out2.position.y += out2.position.w * ysize;
 					out2.position = out2.position / out2.position.w;
-					out2.viewposition = mul(_InverseProjMatrix, out2.position);
+					out2.viewposition = mul(UNITY_ACCESS_INSTANCED_PROP(Props, _InverseProjMatrix), out2.position);
 					out2.viewposition /= out2.viewposition.w;
 					out2.size = input[0].size;
 
@@ -125,7 +126,7 @@
 					out3.position.x += out3.position.w * xsize;
 					out3.position.y -= out3.position.w * ysize;
 					out3.position = out3.position / out3.position.w;
-					out3.viewposition = mul(_InverseProjMatrix, out3.position);
+					out3.viewposition = mul(UNITY_ACCESS_INSTANCED_PROP(Props, _InverseProjMatrix), out3.position);
 					out3.viewposition /= out3.viewposition.w;
 					out3.size = input[0].size;
 
@@ -135,7 +136,7 @@
 					out4.position.x -= out4.position.w * xsize;
 					out4.position.y -= out4.position.w * ysize;
 					out4.position = out4.position / out4.position.w;
-					out4.viewposition = mul(_InverseProjMatrix, out4.position);
+					out4.viewposition = mul(UNITY_ACCESS_INSTANCED_PROP(Props, _InverseProjMatrix), out4.position);
 					out4.viewposition /= out4.viewposition.w;
 					out4.size = input[0].size;
 
@@ -155,10 +156,10 @@
 					UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(o);
 					FragmentOutput fragout;
 					float uvlen = o.uv.x*o.uv.x + o.uv.y*o.uv.y;
-					if (_Circles >= 0.5 && uvlen > 1) {
+					if (UNITY_ACCESS_INSTANCED_PROP(Props, _Circles) >= 0.5 && uvlen > 1) {
 						discard;
 					}
-					if (_Cones < 0.5) {
+					if (UNITY_ACCESS_INSTANCED_PROP(Props, _Cones) < 0.5) {
 						o.viewposition.z += (1 - uvlen) * o.size;
 					}
 					else {

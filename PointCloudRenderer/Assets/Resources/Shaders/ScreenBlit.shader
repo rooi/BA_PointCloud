@@ -22,10 +22,12 @@ Shader "Hidden/ScreenBlit"
 #include "UnityCG.cginc"
 
       sampler2D _MainTex;
-      //uniform float4 _MainTex_TexelSize;
+	  //uniform float4 _MainTex_TexelSize;
 
       fixed4 frag(v2f_img i) : SV_Target
       {
+	    UNITY_SETUP_INSTANCE_ID(i);
+		
         float2 uv = i.uv;
         // The following code may be required in some instances. If the rendered image is flipped
         // then enable this code and uncomment the uniform declaration of '_MainTex_TexelSize'

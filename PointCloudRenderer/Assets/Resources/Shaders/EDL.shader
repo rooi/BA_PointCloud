@@ -33,7 +33,7 @@ Shader "Hidden/EDL"
 #include "UnityCG.cginc"
 
       sampler2D _MainTex;
-      sampler2D _DepthTexture;
+	  sampler2D _DepthTexture;
       //uniform float4 _MainTex_TexelSize;
       float _Radius;
       float _ExpScale;
@@ -78,13 +78,15 @@ Shader "Hidden/EDL"
         }
         return sum;
       }
-
+	  
       ///////////////////////////////////////////////////////////////////////////
       // Fragment shader
       // Depth from http://williamchyr.com/2013/11/unity-shaders-depth-and-normal-textures/
       // http://beta.unity3d.com/talks/Siggraph2011_SpecialEffectsWithDepth_WithNotes.pdf
       fixed4 frag(v2f_img i) : SV_Target
       {
+	    UNITY_SETUP_INSTANCE_ID(i);
+		
         // Note: we work with depth value of 1 being near the camera, and 0 being far away.
         // This corresponds to the Unity 5.5+ reversed depth buffer, but for lower versions,
         // we must reverse the range.
