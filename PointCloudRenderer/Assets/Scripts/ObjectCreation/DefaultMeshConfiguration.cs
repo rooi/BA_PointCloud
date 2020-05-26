@@ -69,15 +69,19 @@ namespace BAPointCloudRenderer.ObjectCreation {
         private void LoadShaders() {
             if (interpolation == FragInterpolationMode.OFF) {
                 if (screenSize) {
-                    material = new Material(Shader.Find("Custom/QuadGeoScreenSizeShader"));
+					material = (Material)Resources.Load("Materials/QuadGeoScreenSizeMaterial", typeof(Material));
+                    if(!material) material = new Material(Shader.Find("Custom/QuadGeoScreenSizeShader"));
                 } else {
-                    material = new Material(Shader.Find("Custom/QuadGeoWorldSizeShader"));
+					material = (Material)Resources.Load("Materials/QuadGeoWorldSizeMaterial", typeof(Material));
+                    if(!material) material = new Material(Shader.Find("Custom/QuadGeoWorldSizeShader"));
                 }
             } else if (interpolation == FragInterpolationMode.PARABOLOIDS || interpolation == FragInterpolationMode.CONES) {
                 if (screenSize) {
-                    material = new Material(Shader.Find("Custom/ParaboloidFragScreenSizeShader"));
+					material = (Material)Resources.Load("Materials/ParaboloidFragScreenSizeMaterial", typeof(Material));
+                    if(!material) material = new Material(Shader.Find("Custom/ParaboloidFragScreenSizeShader"));
                 } else {
-                    material = new Material(Shader.Find("Custom/ParaboloidFragWorldSizeShader"));
+					material = (Material)Resources.Load("Materials/ParaboloidFragWorldSizeMaterial", typeof(Material));
+                    if(!material) material = new Material(Shader.Find("Custom/ParaboloidFragWorldSizeShader"));
                 }
                 material.SetInt("_Cones", (interpolation == FragInterpolationMode.CONES) ? 1 : 0);
             }
@@ -87,6 +91,7 @@ namespace BAPointCloudRenderer.ObjectCreation {
             {
                 renderCamera = Camera.main;
             }
+			material.enableInstancing = true;
         }
 
         public void Start() {
