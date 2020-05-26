@@ -6,6 +6,10 @@ Shader "Custom/PointShader"
 	This shader renders the given vertices as points with the given color.
 	The point size is set to 30 (fixed), but unfortunately it doesn't seem to have any effect.
 	*/
+	Properties{
+		_PointSize("Point Size", Float) = 5
+	}
+
 	SubShader
 	{
 		LOD 200
@@ -29,6 +33,7 @@ Shader "Custom/PointShader"
 			{
 				float4 position : SV_POSITION;
 				float4 color : COLOR;
+				float size : PSIZE;
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 				UNITY_VERTEX_OUTPUT_STEREO
 			};
@@ -45,6 +50,7 @@ Shader "Custom/PointShader"
 				
 				o.position = UnityObjectToClipPos(v.position);
 				o.color = v.color;
+				o.size = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize);
 				return o;
 			}
 
