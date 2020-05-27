@@ -1,5 +1,6 @@
 ﻿using BAPointCloudRenderer.CloudData;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -148,14 +149,28 @@ namespace BAPointCloudRenderer.Loading {
             byte[] data = FindAndLoadFile(dataRPath, metaData, node.Name, ".bin");
             int pointByteSize = 16;//TODO: Is this always the case?
             int numPoints = data.Length / pointByteSize;
+
+            //Read in data
+            if (metaData is PointCloudMetaData16) LoadPointAttributes(data, pointByteSize, numPoints, (PointCloudMetaData16)metaData, node);
+            else if (metaData is PointCloudMetaData17) LoadPointAttributes(data, (PointCloudMetaData17)metaData, node); // pointByteSize and numPoints are specified in the attributes
+            else UnityEngine.Debug.LogError("CloudLoader.LoadPoints - Cloud not load point attributes");
+
+            
+        }
+
+        private static void LoadPointAttributes(byte[] data, int pointByteSize, int numPoints, PointCloudMetaData16 metaData, Node node)
+        {
             int offset = 0;
 
             Vector3[] vertices = new Vector3[numPoints];
             Color[] colors = new Color[numPoints];
-            //Read in data
-            foreach (string pointAttribute in metaData.pointAttributes) {
-                if (pointAttribute.Equals(PointAttributes.POSITION_CARTESIAN)) {
-                    for (int i = 0; i < numPoints; i++) {
+
+            foreach (string pointAttribute in metaData.pointAttributes)
+            {
+                if (pointAttribute.Equals(PointAttributes.POSITION_CARTESIAN))
+                {
+                    for (int i = 0; i < numPoints; i++)
+                    {
                         //Reduction to single precision!
                         //Note: y and z are switched
                         float x = (float)(System.BitConverter.ToUInt32(data, offset + i * pointByteSize + 0) * metaData.scale/* + node.BoundingBox.lx*/);
@@ -164,8 +179,11 @@ namespace BAPointCloudRenderer.Loading {
                         vertices[i] = new Vector3(x, y, z);
                     }
                     offset += 12;
-                } else if (pointAttribute.Equals(PointAttributes.COLOR_PACKED)) {
-                    for (int i = 0; i < numPoints; i++) {
+                }
+                else if (pointAttribute.Equals(PointAttributes.COLOR_PACKED))
+                {
+                    for (int i = 0; i < numPoints; i++)
+                    {
                         byte r = data[offset + i * pointByteSize + 0];
                         byte g = data[offset + i * pointByteSize + 1];
                         byte b = data[offset + i * pointByteSize + 2];
@@ -174,7 +192,78 @@ namespace BAPointCloudRenderer.Loading {
                     offset += 3;
                 }
             }
+
             node.SetPoints(vertices, colors);
+
+        }
+
+        private static void LoadPointAttributes(byte[] data, PointCloudMetaData17 metaData, Node node)
+        {
+            int offset = 0;
+
+            // Determine numPoints
+            int pointByteSize = 0;
+            foreach (PointCloudMetaData17.PointAttributes pointAttribute in metaData.pointAttributes)
+            {
+                pointByteSize += pointAttribute.size;
+            }
+
+            int numPoints = data.Length / pointByteSize;
+
+            Vector3[] vertices = new Vector3[numPoints];
+            Color[] colors = new Color[numPoints];
+
+            // read all data
+            int currentVertex = 0;
+            int currentColor = 0;
+            while(offset < data.Length)
+            {
+                int startOffset = offset;
+                foreach (PointCloudMetaData17.PointAttributes pointAttribute in metaData.pointAttributes)
+                {
+                    if (pointAttribute.name.Equals(PointAttributes.POSITION_CARTESIAN))
+                    {
+                        //Reduction to single precision!
+                        //Note: y and z are switched
+                        float x = (float)(System.BitConverter.ToUInt32(data, offset + 0) * metaData.scale/* + node.BoundingBox.lx*/);
+                        float y = (float)(System.BitConverter.ToUInt32(data, offset + 8) * metaData.scale/* + node.BoundingBox.lz*/);
+                        float z = (float)(System.BitConverter.ToUInt32(data, offset + 4) * metaData.scale/* + node.BoundingBox.ly*/);
+                        vertices[currentVertex] = new Vector3(x, y, z);
+                        currentVertex++;
+
+                        offset += pointAttribute.size;
+                    }
+                    else if (pointAttribute.name.Equals(PointAttributes.COLOR_PACKED) ||
+                         pointAttribute.name.Equals(PointAttributes.RGB_PACKED) ||
+                         pointAttribute.name.Equals(PointAttributes.RGBA_PACKED) ||
+                         pointAttribute.name.Equals(PointAttributes.RGB) ||
+                         pointAttribute.name.Equals(PointAttributes.RGBA))
+                    {
+                        
+                        byte r = data[offset + 0];
+                        byte g = data[offset + 1];
+                        byte b = data[offset + 2];
+                        byte a = (pointAttribute.name.Equals(PointAttributes.RGBA_PACKED) || pointAttribute.name.Equals(PointAttributes.RGBA) )? data[offset + 3] : (byte)255;
+                        colors[currentColor] = new Color32(r, g, b, 255);
+                        currentColor++;
+                        
+                        offset += pointAttribute.size;
+                    }
+                    else // just skip the data; 
+                    {
+                        offset += pointAttribute.size;
+                    }
+                }
+                if(startOffset >= offset)
+                {
+                    UnityEngine.Debug.LogError("CloudLoader.LoadPointAttributes - offset not increaing, why? Breaking off while loop");
+                    offset = data.Length;
+                    break;
+                }
+            }
+
+            node.SetPoints(vertices, colors);
+
         }
 
         /* Finds a file for a node in the hierarchy.
