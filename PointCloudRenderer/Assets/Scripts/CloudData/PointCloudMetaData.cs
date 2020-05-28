@@ -42,9 +42,21 @@ namespace BAPointCloudRenderer.CloudData
 
             if (version.Major == 1)
             {
+                //TODO: Clean up/refactor
                 if (version.Minor <= 6)
                 {
-                    data = JsonConvert.DeserializeObject<PointCloudMetaData16>(json);
+                    // First check laz/las
+                    PointCloudMetaData16LAZ data16LAZ = null;
+                    try
+                    {
+                        data16LAZ = JsonConvert.DeserializeObject<PointCloudMetaData16LAZ>(json);
+                    }
+                    catch { }
+                    finally
+                    {
+                        if (data16LAZ != null && (data16LAZ.pointAttributes.Contains("LAS") || data16LAZ.pointAttributes.Contains("LAZ"))) data = data16LAZ;
+                        else data = JsonConvert.DeserializeObject<PointCloudMetaData16>(json);
+                    }
                 }
                 else if (version.Minor <= 7) // there seem to some ambiguity in versioning...
                 {
@@ -53,15 +65,45 @@ namespace BAPointCloudRenderer.CloudData
                     else
                     {
                         // Assume 1.7
-                        PointCloudMetaData17 data17 = JsonConvert.DeserializeObject<PointCloudMetaData17>(json);
-                        data = JsonConvert.DeserializeObject<PointCloudMetaData17>(json);
+                        // First try laz/las
+                        PointCloudMetaData17LAZ data17LAZ = null;
+                        try
+                        {
+                            data17LAZ = JsonConvert.DeserializeObject<PointCloudMetaData17LAZ>(json);
+                        }
+                        catch { }
+                        finally
+                        {
+                            if (data17LAZ != null && (data17LAZ.pointAttributes.Contains("LAS") || data17LAZ.pointAttributes.Contains("LAZ"))) data = data17LAZ;
+                            else
+                            {
+                                PointCloudMetaData17 data17 = JsonConvert.DeserializeObject<PointCloudMetaData17>(json);
+                                data = JsonConvert.DeserializeObject<PointCloudMetaData17>(json);
+                            }
+                        }
                     }
                 }
                 else
                 {
                     UnityEngine.Debug.LogWarning("PointCloudMetaData.ReadFromJson - version " + data.version + " is explicitly supported. Trying 1.7 specification");
-                    PointCloudMetaData17 data17 = JsonConvert.DeserializeObject<PointCloudMetaData17>(json);
-                    data = JsonConvert.DeserializeObject<PointCloudMetaData17>(json);
+
+                    // Assume 1.7
+                    // First try laz/las
+                    PointCloudMetaData17LAZ data17LAZ = null;
+                    try
+                    {
+                        data17LAZ = JsonConvert.DeserializeObject<PointCloudMetaData17LAZ>(json);
+                    }
+                    catch { }
+                    finally
+                    {
+                        if (data17LAZ != null && (data17LAZ.pointAttributes.Contains("LAS") || data17LAZ.pointAttributes.Contains("LAZ"))) data = data17LAZ;
+                        else
+                        {
+                            PointCloudMetaData17 data17 = JsonConvert.DeserializeObject<PointCloudMetaData17>(json);
+                            data = JsonConvert.DeserializeObject<PointCloudMetaData17>(json);
+                        }
+                    }
                 }
             }
             else UnityEngine.Debug.LogError("PointCloudMetaData.ReadFromJson - version " + data.version + " is not support");
@@ -80,9 +122,19 @@ namespace BAPointCloudRenderer.CloudData
 
     }
 
+    public class PointCloudMetaData16LAZ : PointCloudMetaData
+    {
+        public string pointAttributes;
+    }
+
     public class PointCloudMetaData16 : PointCloudMetaData
     {
         public List<string> pointAttributes;
+    }
+
+    public class PointCloudMetaData17LAZ : PointCloudMetaData
+    {
+        public string pointAttributes;
     }
 
     public class PointCloudMetaData17 : PointCloudMetaData
