@@ -521,9 +521,10 @@ namespace BAPointCloudRenderer.Loading
                                 //}
 
                                 //Note: y and z are switched
-                                if (type.IdName == "X") x = (float)(double.Parse(value) * type.Scale * metaData.scale); ; // optimize this
-                                if (type.IdName == "Y") z = (float)(double.Parse(value) * type.Scale * metaData.scale); // optimize this
-                                if (type.IdName == "Z") y = (float)(double.Parse(value) * type.Scale * metaData.scale); // optimize this
+                                //let x = (cv.getUint32(pointOffset + attributeOffset + 0, true) * scale[0]) + offset[0] - min.x;
+                                if (type.IdName == "X") x = (float)(double.Parse(value) * type.Scale * metaData.scale - node.BoundingBox.lx); // optimize this
+                                if (type.IdName == "Y") z = (float)(double.Parse(value) * type.Scale * metaData.scale - node.BoundingBox.lz); // optimize this
+                                if (type.IdName == "Z") y = (float)(double.Parse(value) * type.Scale * metaData.scale - node.BoundingBox.ly); // optimize this
 
                                 //if (type.IdName == "Red")   r = point[positionInterp + 1]; // optimize this. Is this correct? The specification says uint16?
                                 //if (type.IdName == "Green") g = point[positionInterp + 1]; // optimize this
