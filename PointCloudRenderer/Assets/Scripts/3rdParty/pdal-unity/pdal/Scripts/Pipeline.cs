@@ -36,7 +36,7 @@ namespace pdal
 	public class Pipeline : IDisposable
 	{
 		private const string PDALC_LIBRARY = "pdalc";
-		private const int BUFFER_SIZE = 1024;
+		private const int BUFFER_SIZE = 10240;
 
 		[DllImport(PDALC_LIBRARY, EntryPoint="PDALCreatePipeline")]
 		private static extern IntPtr create(string json);
