@@ -11,6 +11,10 @@
 		_ScreenHeight("Screen Height", Int) = 0
 		[Toggle] _Circles("Circles", Int) = 0
 		[Toggle] _Cones("Cones", Int) = 0
+		_OctreeSpacing("Octree Spacing", float) = 0
+		_MinSize("Min Size", float) = 2.0
+		_MaxSize("Max Size", float) = 50.0
+		_Adaptive_Point_Size("Enable Adaptive Point Size", int) = 0
 	}
 
 		SubShader
@@ -22,11 +26,17 @@
 				Cull off
 
 				CGPROGRAM
+				//#pragma enable_d3d11_debug_symbols
 				#pragma vertex vert
 				#pragma geometry geom
 				#pragma fragment frag
 				#pragma multi_compile_instancing
 				#include "UnityCG.cginc"
+
+				uniform int _Adaptive_Point_Size;
+				uniform float _OctreeSpacing;
+				uniform float _MinSize;
+				uniform float _MaxSize;
 
 				struct VertexInput
 				{
@@ -49,7 +59,7 @@
 					float4 viewposition: TEXCOORD1;
 					float4 color : COLOR;
 					float2 uv : TEXCOORD0;
-					float size : POINTSIZE;
+					float size : PSIZE;
 					UNITY_VERTEX_INPUT_INSTANCE_ID
 					UNITY_VERTEX_OUTPUT_STEREO
 				}; 
@@ -76,18 +86,33 @@
 					UNITY_INITIALIZE_OUTPUT(VertexMiddle, o)
 					UNITY_TRANSFER_INSTANCE_ID(v, o);
 					UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+					
+					float pointSize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize);
 					float4 viewpos = float4(UnityObjectToViewPos(v.position), 1);
 					o.position = mul(UNITY_MATRIX_P, viewpos);
 					float slope = tan(UNITY_ACCESS_INSTANCED_PROP(Props, _FOV) / 2);
 					o.size = -UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) * slope * viewpos.z * 2 / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight);
+					//if (_Adaptive_Point_Size > 0) {
+					//	o.size = o.size * _OctreeSpacing;
+					//}
+					
 					o.color = v.color;
 					return o;
 				}
 
 				[maxvertexcount(4)]
 				void geom(point VertexMiddle input[1], inout TriangleStream<VertexOutput> outputStream) {
-					float xsize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenWidth);
-					float ysize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight);
+					
+					float xsize = 1.0;
+					float ysize = 1.0;
+					//if (_Adaptive_Point_Size > 0) {
+					//	xsize = input[0].size;
+					//	ysize = input[0].size;
+					//}
+					
+					xsize = xsize / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenWidth);
+					ysize = ysize / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight);
+
 					UNITY_SETUP_INSTANCE_ID(input[0]);
 
 					VertexOutput out1;

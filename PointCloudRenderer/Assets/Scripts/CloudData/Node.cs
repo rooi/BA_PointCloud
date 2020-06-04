@@ -61,7 +61,7 @@ namespace BAPointCloudRenderer.CloudData {
         public void CreateGameObjects(MeshConfiguration configuration, Transform parent) {
             int max = configuration.GetMaximumPointsPerMesh();
             if (verticesToStore.Length <= max) {
-                gameObjects.Add(configuration.CreateGameObject(metaData.cloudName + "/" + "r" + name + " (" + verticesToStore.Length + ")", verticesToStore, colorsToStore, boundingBox, parent));
+                gameObjects.Add(configuration.CreateGameObject(metaData.cloudName + "/" + "r" + name + " (" + verticesToStore.Length + ")", verticesToStore, colorsToStore, boundingBox, parent, metaData.spacing / (float)(GetLevel() + 1)));
             } else {
                 int amount = Math.Min(max, verticesToStore.Length);
                 int index = 0; //name index
@@ -72,7 +72,7 @@ namespace BAPointCloudRenderer.CloudData {
                     Color[] colors = restColors.Take(amount).ToArray(); ;
                     restVertices = restVertices.Skip(amount).ToArray();
                     restColors = restColors.Skip(amount).ToArray();
-                    gameObjects.Add(configuration.CreateGameObject(metaData.cloudName + "/" + "r" + name + "_" + index + " (" + vertices.Length + ")", vertices, colors, boundingBox, parent));
+                    gameObjects.Add(configuration.CreateGameObject(metaData.cloudName + "/" + "r" + name + "_" + index + " (" + vertices.Length + ")", vertices, colors, boundingBox, parent, metaData.spacing / (float)(GetLevel() + 1)));
                     amount = Math.Min(max, vertices.Length);
                     index++;
                 }

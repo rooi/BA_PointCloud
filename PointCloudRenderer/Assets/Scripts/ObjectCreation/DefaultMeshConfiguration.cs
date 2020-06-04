@@ -1,5 +1,6 @@
 ﻿using BAPointCloudRenderer.CloudData;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 
 namespace BAPointCloudRenderer.ObjectCreation {
@@ -63,6 +64,8 @@ namespace BAPointCloudRenderer.ObjectCreation {
         /// </summary>
         public bool displayLOD = false;
 
+        public bool enableAdaptivePointSize = false;
+
         private Material material;
         private HashSet<GameObject> gameObjectCollection = null;
 
@@ -87,6 +90,7 @@ namespace BAPointCloudRenderer.ObjectCreation {
             }
             material.SetFloat("_PointSize", pointRadius);
             material.SetInt("_Circles", renderCircles ? 1 : 0);
+            if(material.HasProperty("_Adaptive_Point_Size")) material.SetInt("_Adaptive_Point_Size", enableAdaptivePointSize ? 1 : 0 );
             if (renderCamera == null)
             {
                 renderCamera = Camera.main;
@@ -101,10 +105,13 @@ namespace BAPointCloudRenderer.ObjectCreation {
             LoadShaders();
         }
 
-        public void Update() {
-            if (reload && gameObjectCollection != null) {
+        public void Update()
+        {
+            if (reload && gameObjectCollection != null)
+            {
                 LoadShaders();
-                foreach (GameObject go in gameObjectCollection) {
+                foreach (GameObject go in gameObjectCollection)
+                {
                     go.GetComponent<MeshRenderer>().material = material;
                 }
                 reload = false;
@@ -117,8 +124,10 @@ namespace BAPointCloudRenderer.ObjectCreation {
                     Utility.BBDraw.DrawBoundingBox(bbc.boundingBox, bbc.parent, Color.red, false);
                 }
             }
-            if (screenSize) {
-                if (interpolation != FragInterpolationMode.OFF) {
+            if (screenSize)
+            {
+                if (interpolation != FragInterpolationMode.OFF)
+                {
                     Matrix4x4 invP = (GL.GetGPUProjectionMatrix(renderCamera.projectionMatrix, true)).inverse;
                     material.SetMatrix("_InverseProjMatrix", invP);
                     material.SetFloat("_FOV", Mathf.Deg2Rad * renderCamera.fieldOfView);
@@ -127,10 +136,31 @@ namespace BAPointCloudRenderer.ObjectCreation {
                 material.SetInt("_ScreenWidth", (int)screen.width);
                 material.SetInt("_ScreenHeight", (int)screen.height);
             }
+            if(enableAdaptivePointSize)
+            {
+                foreach (GameObject go in gameObjectCollection)
+                {
+                    BoundingBoxComponent bbc = go.GetComponent<BoundingBoxComponent>();
+                    Utility.BBDraw.DrawBoundingBox(bbc.boundingBox, bbc.parent, Color.red, false);
+                    if (go.GetComponent<MeshRenderer>().material.HasProperty("_BBSize"))
+                    {
+                        List<float> bbcSize = new List<float>();
+                        bbcSize.Add((float)bbc.boundingBox.Size().x);
+                        bbcSize.Add((float)bbc.boundingBox.Size().y);
+                        bbcSize.Add((float)bbc.boundingBox.Size().z);
+                        go.GetComponent<MeshRenderer>().material.SetFloatArray("_BBSize", bbcSize);
+                    }
+                }
+                if (material.HasProperty("_VisibleNodes"))
+                {
+                    //TODO
+                }
+            }
         }
 
-        public override GameObject CreateGameObject(string name, Vector3[] vertexData, Color[] colorData, BoundingBox boundingBox, Transform parent) {
+        public override GameObject CreateGameObject(string name, Vector3[] vertexData, Color[] colorData, BoundingBox boundingBox, Transform parent, double spacing) {
             GameObject gameObject = new GameObject(name);
+            Debug.Log(name + " spacing = " + spacing);
 
             Mesh mesh = new Mesh();
 
@@ -140,6 +170,11 @@ namespace BAPointCloudRenderer.ObjectCreation {
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             renderer.material = material;
+
+            if (enableAdaptivePointSize && material.HasProperty("_OctreeSpacing"))
+            {
+                material.SetFloat("_OctreeSpacing", (float)spacing);
+            }
 
             int[] indecies = new int[vertexData.Length];
             for (int i = 0; i < vertexData.Length; ++i) {

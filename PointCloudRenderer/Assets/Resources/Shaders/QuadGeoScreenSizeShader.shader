@@ -12,6 +12,10 @@ Shader "Custom/QuadGeoScreenSizeShader"
 		_ScreenWidth("Screen Width", Int) = 0
 		_ScreenHeight("Screen Height", Int) = 0
 		[Toggle] _Circles("Circles", Int) = 0
+		_OctreeSpacing("Octree Spacing", Float) = 0
+		_MinSize("Min Size", float) = 2.0
+		_MaxSize("Max Size", float) = 50.0
+		_Adaptive_Point_Size("Enable Adaptive Point Size", int) = 0
 	}
 
 		SubShader
@@ -32,6 +36,11 @@ Shader "Custom/QuadGeoScreenSizeShader"
 				
 				// Use Shader model 3.0 target
 				#pragma target 3.0
+
+				uniform int _Adaptive_Point_Size;
+				uniform float _OctreeSpacing;
+				uniform float _MinSize;
+				uniform float _MaxSize;
 
 				struct VertexInput
 				{
@@ -76,8 +85,24 @@ Shader "Custom/QuadGeoScreenSizeShader"
 
 				[maxvertexcount(4)]
 				void geom(point VertexMiddle input[1], inout TriangleStream<VertexOutput> outputStream) {
-					float xsize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenWidth);
-					float ysize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight);
+					float xsize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize);
+					float ysize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize);
+
+					if (_Adaptive_Point_Size > 0 && _OctreeSpacing > 0)
+					{
+						float factor = pow(1.3, _OctreeSpacing); // _OctreeSpacing
+						xsize = xsize * factor;
+						ysize = ysize * factor;
+					}
+
+					xsize = max(_MinSize, xsize);
+					xsize = min(_MaxSize, xsize);
+					ysize = max(_MinSize, ysize);
+					ysize = min(_MaxSize, ysize);
+
+					xsize = xsize / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenWidth);
+					ysize = ysize / UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight);
+
 					UNITY_SETUP_INSTANCE_ID(input[0]);
 					
 					VertexOutput out1;

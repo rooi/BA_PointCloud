@@ -615,8 +615,11 @@ namespace BAPointCloudRenderer.Loading
                             for (uint i = 0; i < size; ++i)
                             {
                                 pdal.DimType type = types.at(i);
-                                string interpretationName = type.InterpretationName;
                                 int interpretationByteCount = type.InterpretationByteCount;
+                                /*
+                                
+                                string interpretationName = type.InterpretationName;
+                                
                                 string value = "?";
                                 UInt16 valueUint = 0;
                                 double valueD = 0.0;
@@ -663,40 +666,30 @@ namespace BAPointCloudRenderer.Loading
                                 {
                                     value = ((sbyte)points[offset + positionInterp]).ToString();
                                 }
-
-                                if (p == 0)
-                                {
-                                    UnityEngine.Debug.Log("\t\tType " + type.Id + " [" + type.IdName
-                                        + " (" + type.Interpretation + ":" + type.InterpretationName + " <" + type.InterpretationByteCount + " bytes>"
-                                        + "), position " + positionInterp
-                                       + ", scale " + type.Scale
-                                        + ", offset " + type.Offset + ", metaData.scale " + metaData.scale + "]: " + value);
-                                }
+                                */
+                                //if (p == 0)
+                                //{
+                                //    UnityEngine.Debug.Log("\t\tType " + type.Id + " [" + type.IdName
+                                //        + " (" + type.Interpretation + ":" + type.InterpretationName + " <" + type.InterpretationByteCount + " bytes>"
+                                //        + "), position " + positionInterp
+                                //       + ", scale " + type.Scale
+                                //        + ", offset " + type.Offset + ", metaData.scale " + metaData.scale + "]: " + value);
+                                //}
 
                                 //Note: y and z are switched
-                                //if (type.IdName == "X") x = (float)((valueD * type.Scale) * metaData.scale - node.BoundingBox.lx + metaData.boundingBox.lx); // optimize this
-                                //if (type.IdName == "Y") z = (float)((valueD * type.Scale) * metaData.scale - node.BoundingBox.lz + metaData.boundingBox.lz); // optimize this
-                                //if (type.IdName == "Z") y = (float)((valueD * type.Scale) * metaData.scale - node.BoundingBox.ly + metaData.boundingBox.ly); // optimize this
-                                if (type.IdName == "X") x = (float)(((valueD * type.Scale) - readersLas.offset_x));// * readersLas.scale_x);// + node.BoundingBox.lx); // optimize this
-                                if (type.IdName == "Y") z = (float)(((valueD * type.Scale) - readersLas.offset_y));// * readersLas.scale_y);// + node.BoundingBox.ly); // optimize this
-                                if (type.IdName == "Z") y = (float)(((valueD * type.Scale) - readersLas.offset_z));// * readersLas.scale_z);// + node.BoundingBox.lz); // optimize this
+                                if (type.IdName == "X") x = (float)(((BitConverter.ToDouble(points, (int)(offset + positionInterp)) * type.Scale) - readersLas.offset_x));
+                                if (type.IdName == "Y") z = (float)(((BitConverter.ToDouble(points, (int)(offset + positionInterp)) * type.Scale) - readersLas.offset_y));
+                                if (type.IdName == "Z") y = (float)(((BitConverter.ToDouble(points, (int)(offset + positionInterp)) * type.Scale) - readersLas.offset_z));
 
-                                if (type.IdName == "Red") r = (ushort)(valueUint / 256);// optimize this
-                                if (type.IdName == "Green") g = (ushort)(valueUint / 256); // optimize this
-                                if (type.IdName == "Blue") b = (ushort)(valueUint / 256); // optimize this
+                                if (type.IdName == "Red")   r = (ushort)(BitConverter.ToUInt16(points, (int)(offset + positionInterp)) / 256);
+                                if (type.IdName == "Green") g = (ushort)(BitConverter.ToUInt16(points, (int)(offset + positionInterp)) / 256);
+                                if (type.IdName == "Blue")  b = (ushort)(BitConverter.ToUInt16(points, (int)(offset + positionInterp)) / 256);
 
                                 positionInterp += interpretationByteCount;
                             }
 
-                            //UnityEngine.Debug.Log("x = " + x + ", y = " + y + ", z = " + z + ",    metaData.boundingBox.lx = " + metaData.boundingBox.lx);
-                            //viewVertices[(int)(viewPointCounter + p)] = new Vector3(x, y, z);
-                            //viewColors[(int)(viewPointCounter + p)] = new Color32(r, g, b, 255);
-
                             vertices[(int)(pointCounter)] = new Vector3(x, y, z);
                             colors[(int)(pointCounter)] = new Color32((byte)r, (byte)g, (byte)b, 255);
-
-                            //UnityEngine.Debug.Log("VERTEX[" + (viewPointCounter + p) + "] = " + viewVertices[(int)(viewPointCounter + p)]);
-                            //UnityEngine.Debug.Log("COLOR[" + colors.Count + "] = " + colors.ElementAt(colors.Count-1));
 
                             pointCounter++;
                             offset += layout.PointSize;

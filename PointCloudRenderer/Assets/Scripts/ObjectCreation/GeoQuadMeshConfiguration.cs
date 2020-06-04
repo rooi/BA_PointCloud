@@ -145,7 +145,7 @@ namespace BAPointCloudRenderer.ObjectCreation {
             }
         }
 
-        public override GameObject CreateGameObject(string name, Vector3[] vertexData, Color[] colorData, BoundingBox boundingBox, Transform parent) {
+        public override GameObject CreateGameObject(string name, Vector3[] vertexData, Color[] colorData, BoundingBox boundingBox, Transform parent, double spacing) {
             GameObject gameObject = new GameObject(name);
 
             Mesh mesh = new Mesh();

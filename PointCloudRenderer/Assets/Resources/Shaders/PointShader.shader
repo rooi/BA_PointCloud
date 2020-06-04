@@ -8,6 +8,14 @@ Shader "Custom/PointShader"
 	*/
 	Properties{
 		_PointSize("Point Size", Float) = 5
+		_ScreenWidth("Screen Width", Int) = 0
+		_ScreenHeight("Screen Height", Int) = 0
+		_BBSize("Bounding Box Size", Vector) = (0.0, 0.0, 0.0)
+		_VisibleNodes("Visible Nodes", 2D) = "defaulttexture" {}
+		_OctreeSpacing("Octree Spacing", float) = 0
+		_MinSize("Min Size", float) = 5.0
+		_MaxSize("Max Size", float) = 5.0
+		_Adaptive_Point_Size("Enable Adaptive Point Size", int) = 0
 	}
 
 	SubShader
@@ -21,6 +29,14 @@ Shader "Custom/PointShader"
 			#pragma fragment frag
 			#pragma multi_compile_instancing
 			#include "UnityCG.cginc"
+
+			uniform bool _Adaptive_Point_Size;
+			uniform sampler2D _VisibleNodes;
+			uniform float _OctreeSpacing;
+			uniform float _MinSize;
+			uniform float _MaxSize;
+
+			uniform float _vRadius;
 
 			struct VertexInput
 			{
@@ -40,7 +56,76 @@ Shader "Custom/PointShader"
 
 			UNITY_INSTANCING_BUFFER_START(Props)
 				UNITY_DEFINE_INSTANCED_PROP(float, _PointSize)
+				UNITY_DEFINE_INSTANCED_PROP(int, _ScreenWidth)
+				UNITY_DEFINE_INSTANCED_PROP(int, _ScreenHeight)
+				UNITY_DEFINE_INSTANCED_PROP(float, _FOV)
+				UNITY_DEFINE_INSTANCED_PROP(float4x4, _InverseProjMatrix)
+				UNITY_DEFINE_INSTANCED_PROP(float3, _BBSize)
 			UNITY_INSTANCING_BUFFER_END(Props)	
+
+				float getLOD(float3  position) {
+				float3  offset = float3(0.0, 0.0, 0.0);
+				float iOffset = 0.0;
+				float depth = 0.0;
+
+
+				float3 size = UNITY_ACCESS_INSTANCED_PROP(Props, _BBSize);
+				float3 pos = position;
+
+				for (float i = 0.0; i <= 1000.0; i++) {
+
+					fixed4 value = tex2Dlod(_VisibleNodes, float4(iOffset / 2048.0, 0.0, 0.0, 0.0));
+
+					int children = int(value.r * 255.0);
+					float next = value.g * 255.0;
+					int split = int(value.b * 255.0);
+
+					if (next == 0.0) {
+						return depth;
+					}
+
+					float3 splitv = float3(0.0, 0.0, 0.0);
+					if (split == 1) {
+						splitv.x = 1.0;
+					}
+					else if (split == 2) {
+						splitv.y = 1.0;
+					}
+					else if (split == 4) {
+						splitv.z = 1.0;
+					}
+
+					iOffset = iOffset + next;
+
+					float factor = length(pos * splitv / size);
+					if (factor < 0.5) {
+						// left
+						if (children == 0 || children == 2) {
+							return depth;
+						}
+					}
+					else {
+						// right
+						pos = pos - size * splitv * 0.5;
+						if (children == 0 || children == 1) {
+							return depth;
+						}
+						if (children == 3) {
+							iOffset = iOffset + 1.0;
+						}
+					}
+					size = size * ((1.0 - (splitv + 1.0) / 2.0) + 0.5);
+
+					depth++;
+				}
+
+
+				return depth;
+			}
+
+			float getPointSizeAttenuation(float3 position) {
+				return 0.5 * pow(1.3, getLOD(position));
+			}
 
 			VertexOutput vert(VertexInput v) {
 				VertexOutput o;
@@ -50,7 +135,54 @@ Shader "Custom/PointShader"
 				
 				o.position = UnityObjectToClipPos(v.position);
 				o.color = v.color;
-				o.size = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize);
+
+				float pointSize = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize);
+				float4 viewpos = float4(UnityObjectToViewPos(v.position), 1);
+				o.position = mul(UNITY_MATRIX_P, viewpos);
+				float slope = tan(UNITY_ACCESS_INSTANCED_PROP(Props, _FOV) / 2);
+				if (_Adaptive_Point_Size > 0) {
+					float projFactor = -0.5 * UNITY_ACCESS_INSTANCED_PROP(Props, _ScreenHeight) / (slope * viewpos.z);
+					float r = _OctreeSpacing * 1.7;
+					_vRadius = r;
+					//#if defined fixed_point_size
+					//					pointSize = size;
+					//#elif defined attenuated_point_size
+					//					if (uUseOrthographicCamera) {
+					//						pointSize = size;
+					//					}
+					//					else {
+					//						pointSize = size * spacing * projFactor;
+					//						//pointSize = pointSize * projFactor;
+					//					}
+					//#elif defined adaptive_point_size
+										//if (uUseOrthographicCamera) {
+										//	float worldSpaceSize = 1.0 * size * r / getPointSizeAttenuation();
+										//	pointSize = (worldSpaceSize / uOrthoWidth) * uScreenWidth;
+										//}
+										//else {
+
+											//if (uIsLeafNode && false) {
+											//	pointSize = size * spacing * projFactor;
+											//}
+											//else {
+					float worldSpaceSize = 1.0 * UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize) * r / getPointSizeAttenuation(v.position);
+					pointSize = worldSpaceSize * projFactor;
+					//}
+				//}
+				//#endif
+					pointSize = max(_MinSize, pointSize);
+					pointSize = min(_MaxSize, pointSize);
+
+					_vRadius = pointSize / projFactor;
+
+					o.size = pointSize;
+				}
+				else {
+					o.size = UNITY_ACCESS_INSTANCED_PROP(Props, _PointSize);
+				}
+
+				
+
 				return o;
 			}
 
